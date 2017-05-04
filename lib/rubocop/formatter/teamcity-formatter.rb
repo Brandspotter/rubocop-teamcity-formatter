@@ -19,7 +19,7 @@ module RuboCop
             output.puts(
               teamcity_escape("testFailed name='#{file}' message=" \
                               "'#{off.location.to_s.gsub("#{Dir.pwd}/", '')}:" \
-                              " #{off.message}'")
+                              " #{replace_escaped_symbols(off.message)}'")
             )
             output.puts(teamcity_escape("testFinished name='#{file}'"))
           end
@@ -32,8 +32,27 @@ module RuboCop
 
       private
 
+      def replace_escaped_symbols(text)
+        copy_of_text = String.new(text)
+        copy_of_text.gsub!(/\|/, "||")
+        copy_of_text.gsub!(/'/, "|'")
+        copy_of_text.gsub!(/\n/, "|n")
+        copy_of_text.gsub!(/\r/, "|r")
+        copy_of_text.gsub!(/\]/, "|]")
+        copy_of_text.gsub!(/\[/, "|[")
+        begin
+          copy_of_text.encode!('UTF-8') if copy_of_text.respond_to?(:encode!)
+          copy_of_text.gsub!(/\u0085/, "|x") # next line
+          copy_of_text.gsub!(/\u2028/, "|l") # line separator
+          copy_of_text.gsub!(/\u2029/, "|p") # paragraph separator
+        rescue
+          # it is not an utf-8 compatible string
+        end
+        copy_of_text
+      end
+
       def teamcity_escape(message)
-        "##teamcity[#{message.tr('\\', '|')}]"
+        "##teamcity[#{message}]"
       end
     end
   end
